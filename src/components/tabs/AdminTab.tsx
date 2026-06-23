@@ -2,11 +2,122 @@
 
 import React from 'react';
 import { useApp } from '../../context/AppContext';
-import { Shield, Sparkles, Database, Trash2, Check } from 'lucide-react';
+import { Shield, Sparkles, Database, Trash2, Check, RefreshCw, Copy, Download, Upload } from 'lucide-react';
 import { db, getLocalDateString } from '../../lib/db';
+
+const BACKUP_KEYS = {
+  PROFILE: 'fitforge_profile',
+  TEMPLATES: 'fitforge_templates',
+  WORKOUTS: 'fitforge_workouts',
+  EXERCISES: 'fitforge_exercises',
+  DIET: 'fitforge_diet',
+  BODY: 'fitforge_body',
+  PHOTOS: 'fitforge_photos',
+  WATER: 'fitforge_water',
+  SLEEP: 'fitforge_sleep',
+  ACHIEVEMENTS: 'fitforge_achievements'
+};
 
 export default function AdminTab() {
   const { exercises, deleteExercise } = useApp();
+  const [importText, setImportText] = React.useState('');
+
+  const handleExportData = () => {
+    try {
+      const data: Record<string, string | null> = {};
+      Object.entries(BACKUP_KEYS).forEach(([keyName, keyValue]) => {
+        data[keyName] = localStorage.getItem(keyValue);
+      });
+      const jsonString = JSON.stringify(data);
+      navigator.clipboard.writeText(jsonString)
+        .then(() => {
+          alert('Backup copied to clipboard! Paste it on your phone or save it somewhere safe.');
+        })
+        .catch(err => {
+          console.error('Clipboard copy failed:', err);
+          alert('Could not copy to clipboard automatically. Please copy the data from the textbox or download it as a file.');
+          setImportText(jsonString);
+        });
+    } catch (e) {
+      alert('Export failed: ' + (e as Error).message);
+    }
+  };
+
+  const handleDownloadBackup = () => {
+    try {
+      const data: Record<string, string | null> = {};
+      Object.entries(BACKUP_KEYS).forEach(([keyName, keyValue]) => {
+        data[keyName] = localStorage.getItem(keyValue);
+      });
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `fitforge_backup_${getLocalDateString()}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      alert('Download failed: ' + (e as Error).message);
+    }
+  };
+
+  const handleImportData = (rawText: string) => {
+    if (!rawText || !rawText.trim()) {
+      alert('Please paste or upload backup data first.');
+      return;
+    }
+    try {
+      const parsed = JSON.parse(rawText.trim()) as Record<string, string | null>;
+      const expectedKeys = Object.keys(BACKUP_KEYS);
+      const actualKeys = Object.keys(parsed);
+      const isValid = actualKeys.some(k => expectedKeys.includes(k));
+      
+      if (!isValid) {
+        alert('Invalid backup format. Make sure you copied the correct FitForge backup data.');
+        return;
+      }
+
+      if (!confirm('WARNING: Importing this backup will overwrite ALL current profile details, templates, logs, and achievements on this device. Do you want to proceed?')) {
+        return;
+      }
+
+      Object.entries(parsed).forEach(([keyName, value]) => {
+        const keyValue = BACKUP_KEYS[keyName as keyof typeof BACKUP_KEYS];
+        if (keyValue) {
+          if (value === null) {
+            localStorage.removeItem(keyValue);
+          } else {
+            localStorage.setItem(keyValue, value);
+          }
+        }
+      });
+
+      alert('Sync successful! Reloading to load your data...');
+      window.location.reload();
+    } catch (e) {
+      alert('Failed to parse data: ' + (e as Error).message + '. Make sure the backup text is copied correctly.');
+    }
+  };
+
+  const handleFileImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result as string;
+      if (text) {
+        setImportText(text);
+        handleImportData(text);
+      }
+    };
+    reader.onerror = () => {
+      alert('Failed to read file.');
+    };
+    reader.readAsText(file);
+  };
 
   const handleSeedMockData = () => {
     if (!confirm('This will seed historical workouts, weight logs, sleep logs, and diet items so you can instantly preview FitForge AI charts, AI Coach tips, and metrics. Proceed?')) {
@@ -281,6 +392,73 @@ export default function AdminTab() {
               </p>
             </div>
           </button>
+        </div>
+      </div>
+
+      {/* Sync & Backup Console */}
+      <div className="forge-card p-6 bg-gradient-to-br from-zinc-900 to-zinc-950">
+        <div className="flex items-center space-x-2.5 mb-6">
+          <div className="p-2 bg-orange-500/10 border border-orange-500/30 text-orange-500 rounded-xl">
+            <RefreshCw className="h-5 w-5" />
+          </div>
+          <div>
+            <h3 className="text-lg font-black text-white">Sync & Backup</h3>
+            <p className="text-xs text-zinc-500">Transfer profile details, custom exercises, templates, and history between devices</p>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <div className="flex flex-col md:flex-row gap-3">
+            <button
+              onClick={handleExportData}
+              className="flex-1 py-3 px-4 bg-orange-600/10 hover:bg-orange-600/20 text-orange-500 border border-orange-500/30 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <Copy className="h-4 w-4" />
+              Copy Backup to Clipboard
+            </button>
+            <button
+              onClick={handleDownloadBackup}
+              className="flex-1 py-3 px-4 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-800 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <Download className="h-4 w-4" />
+              Download Backup File
+            </button>
+          </div>
+
+          <div className="border-t border-zinc-850/50 pt-4 space-y-3">
+            <label className="block text-xs font-extrabold uppercase text-zinc-500 tracking-wider">Import / Restore Backup</label>
+            <textarea
+              value={importText}
+              onChange={e => setImportText(e.target.value)}
+              placeholder="Paste the exported backup text string here..."
+              className="w-full px-4 py-3 bg-zinc-950 border border-zinc-800 rounded-xl text-white placeholder-zinc-700 focus:outline-none focus:ring-2 focus:ring-orange-500 transition-all text-xs h-20 resize-none font-mono"
+            />
+            
+            <div className="flex flex-col sm:flex-row gap-3">
+              <input
+                type="file"
+                id="backup-file-upload"
+                accept=".json"
+                onChange={handleFileImport}
+                className="hidden"
+              />
+              <button
+                type="button"
+                onClick={() => document.getElementById('backup-file-upload')?.click()}
+                className="py-2.5 px-4 bg-zinc-900 border border-zinc-800 text-zinc-400 font-bold text-xs rounded-xl hover:text-white hover:bg-zinc-800 transition-all flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <Upload className="h-4 w-4" />
+                Upload .json File
+              </button>
+              <button
+                onClick={() => handleImportData(importText)}
+                className="flex-1 py-2.5 px-4 bg-gradient-to-r from-orange-500 to-amber-500 text-white font-black text-xs rounded-xl hover:shadow-[0_0_15px_rgba(249,115,22,0.3)] transition-all flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <Check className="h-4 w-4" />
+                Restore Data
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
