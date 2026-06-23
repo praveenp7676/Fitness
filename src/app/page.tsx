@@ -5,7 +5,8 @@ import { useApp } from '../context/AppContext';
 import Onboarding from '../components/Onboarding';
 import AchievementsNotifier from '../components/AchievementsNotifier';
 import ActiveWorkoutPanel from '../components/ActiveWorkoutPanel';
-import ReportExporter from '../components/ReportExporter';
+import TakeSnapModal from '../components/TakeSnapModal';
+import { getLocalDateString } from '../lib/db';
 
 // Tabs
 import DashboardTab from '../components/tabs/DashboardTab';
@@ -16,15 +17,14 @@ import AdminTab from '../components/tabs/AdminTab';
 // Icons
 import { 
   Home as HomeIcon, Dumbbell, Apple, LineChart, Shield, MessageSquare, 
-  Settings, Flame, Activity, FileText, ChevronDown, User, Sparkles, X
+  Settings, Flame, Activity, FileText, ChevronDown, User, Sparkles, X, Camera
 } from 'lucide-react';
 
 export default function Home() {
-  const { profile, streakDays } = useApp();
+  const { profile, streakDays, snapDate, setSnapDate } = useApp();
   
   const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [showExportModal, setShowExportModal] = useState(false);
 
   // Eliminate SSR hydration mismatches
   useEffect(() => {
@@ -128,11 +128,11 @@ export default function Home() {
             <span className="text-emerald-400">Offline Ready</span>
           </div>
           <button
-            onClick={() => setShowExportModal(true)}
+            onClick={() => setSnapDate(getLocalDateString())}
             className="w-full py-2.5 bg-zinc-950 border border-zinc-800 hover:border-orange-500/30 text-[10px] font-black uppercase tracking-wider text-white rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer"
           >
-            <FileText className="h-3.5 w-3.5 text-orange-500" />
-            Export Data
+            <Camera className="h-3.5 w-3.5 text-orange-500" />
+            Take Snap
           </button>
         </div>
       </aside>
@@ -163,14 +163,13 @@ export default function Home() {
               <span>{streakDays}d</span>
             </div>
 
-            {/* Report Export Button */}
+            {/* Take Snap Button */}
             <button
-              onClick={() => setShowExportModal(true)}
-              className="p-1 px-2.5 bg-orange-600/10 border border-orange-500/20 text-orange-400 text-xs font-black rounded-xl hover:bg-orange-600 hover:text-white transition-all flex items-center gap-1 cursor-pointer"
+              onClick={() => setSnapDate(getLocalDateString())}
+              className="p-1.5 px-3 bg-orange-600/10 border border-orange-500/20 text-orange-400 text-xs font-black rounded-xl hover:bg-orange-600 hover:text-white transition-all flex items-center gap-1.5 cursor-pointer"
             >
-              <FileText className="h-4 w-4" />
-              <span className="hidden sm:inline">Export</span>
-              <ChevronDown className="h-3.5 w-3.5" />
+              <Camera className="h-4 w-4" />
+              <span>Take Snap</span>
             </button>
           </div>
         </header>
@@ -211,21 +210,9 @@ export default function Home() {
       <AchievementsNotifier />
 
       {/* ==========================================
-          MODAL: EXPORT DATA HUB
+          MODAL: SNAPSHOT GENERATOR
           ========================================== */}
-      {showExportModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-zinc-900 border border-zinc-800 rounded-3xl max-w-xl w-full p-6 space-y-4 animate-scale-up max-h-[90vh] overflow-y-auto relative">
-            <button 
-              onClick={() => setShowExportModal(false)}
-              className="absolute top-4 right-4 text-zinc-500 hover:text-white p-1 rounded-lg"
-            >
-              <X className="h-5 w-5" />
-            </button>
-            <ReportExporter />
-          </div>
-        </div>
-      )}
+      {snapDate && <TakeSnapModal />}
 
     </div>
   );

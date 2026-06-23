@@ -66,6 +66,10 @@ interface AppContextType {
   // Unlocked achievement popup trigger
   latestUnlockedAchievement: Achievement | null;
   clearLatestAchievement: () => void;
+
+  // Snapshot modal trigger state
+  snapDate: string | null;
+  setSnapDate: (date: string | null) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -85,6 +89,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // Active workout states
   const [activeWorkout, setActiveWorkout] = useState<ActiveWorkoutState | null>(null);
+  const [snapDate, setSnapDate] = useState<string | null>(null);
   const [restTimeRemaining, setRestTimeRemaining] = useState<number>(0);
   const [latestUnlockedAchievement, setLatestUnlockedAchievement] = useState<Achievement | null>(null);
 
@@ -721,7 +726,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       updateProfile, addCustomExercise, deleteExercise, addTemplate, updateTemplate, duplicateTemplate, deleteTemplate,
       addDietLog, deleteDietLog, addBodyLog, uploadProgressPhoto, addWater, addSleepLog, deleteSleepLog,
       aiRecommendations, recoveryStatus, readinessScore, streakDays,
-      latestUnlockedAchievement, clearLatestAchievement
+      latestUnlockedAchievement, clearLatestAchievement,
+      snapDate, setSnapDate
     }}>
       {children}
     </AppContext.Provider>
