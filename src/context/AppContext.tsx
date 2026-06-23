@@ -108,6 +108,45 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setIsLoaded(true);
   }, []);
 
+  // Sync client data back to disk in development mode (running on localhost)
+  useEffect(() => {
+    if (!isLoaded) return;
+
+    if (typeof window !== 'undefined' && 
+        (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+      
+      const backupData = {
+        profile: localStorage.getItem('fitforge_profile'),
+        templates: localStorage.getItem('fitforge_templates'),
+        workouts: localStorage.getItem('fitforge_workouts'),
+        exercises: localStorage.getItem('fitforge_exercises'),
+        diet: localStorage.getItem('fitforge_diet'),
+        body: localStorage.getItem('fitforge_body'),
+        photos: localStorage.getItem('fitforge_photos'),
+        water: localStorage.getItem('fitforge_water'),
+        sleep: localStorage.getItem('fitforge_sleep'),
+        achievements: localStorage.getItem('fitforge_achievements')
+      };
+
+      fetch('/api/save-backup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(backupData),
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          console.log('[FitForge Dev Sync] Successfully synced localStorage to default_data.json!');
+        }
+      })
+      .catch(err => {
+        console.error('[FitForge Dev Sync] Failed to sync to disk:', err);
+      });
+    }
+  }, [isLoaded, templates, exercises, workouts, dietLogs, waterLogs, sleepLogs, profile, achievements]);
+
   // Sync active workout timer
   useEffect(() => {
     if (!activeWorkout) return;
